@@ -1,0 +1,57 @@
+---
+title: "So shiny!"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(wbstats)
+library(shiny)
+
+data <- wb_data(indicator = "SG.GEN.PARL.ZS") %>%
+  mutate(year = as.integer(date),
+         date = today(),
+         value = SG.GEN.PARL.ZS / 100) %>%
+  filter(!is.na(value))
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+max_year <- max(data$year)
+sliderInput("year", label = "Pick Year:", sep="",
+            min = min(data$year), max = max_year, value = max_year, step = 1)
+```
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### The Only Chart
+
+```{r}
+renderPlot({
+  data %>% 
+    filter(year == input$year ) %>%
+    filter(value > quantile(value, 0.95) ) %>%
+    mutate(country = fct_reorder(country, value)) %>%
+    ggplot(aes(y=country, x=value)) +
+    geom_vline(xintercept=0.5, col="grey", alpha=0.8, size=1.5) +
+    geom_bar(stat="identity", fill="#FBB4AE") +
+    scale_x_continuous(labels = scales::percent, limits = c(0,1) ) +
+    theme_minimal() +
+    labs(title="Highest share of Women in Parliament",
+         subtitle=paste("in", max_year),
+    x="Percentage of Women",
+    y = "")
+})
+```
+
+
